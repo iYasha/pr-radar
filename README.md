@@ -21,15 +21,36 @@ open dist/PRRadar.app
 ```
 
 The bundle is dockless (`LSUIElement`), bundles the fonts
-(`ATSApplicationFontsPath`), and is ad-hoc signed — so it runs on another Mac,
-but the first launch there needs a right-click → Open (or
-`xattr -dr com.apple.quarantine PRRadar.app`) until it carries a Developer ID.
-Bump `BUILD_VERSION` in the script per release. See `Scripts/build-app.sh` for
-config (bundle id, version, min macOS).
+(`ATSApplicationFontsPath`) and `Sparkle.framework`, carries the PR-glyph icon,
+and is ad-hoc signed — so it runs on another Mac, but the first launch there
+needs a right-click → Open (or `xattr -dr com.apple.quarantine PRRadar.app`)
+until it carries a Developer ID. See `Scripts/build-app.sh` for config (bundle
+id, version, min macOS, Sparkle feed/key).
 
 Either way it launches as an accessory app (no dock icon) and installs a
-menu-bar item (git-pull-request mark). Click it to open the 400×560 panel. Quit
-from Activity Monitor or `pkill -f PRRadar` for now (no in-panel quit yet).
+menu-bar item (git-pull-request mark). Click it to open the 400×560 panel.
+**Settings** (header gear) holds the refresh-interval picker, Check for Updates,
+and Quit.
+
+## Releasing & auto-update
+
+Updates ship via [Sparkle](https://sparkle-project.org). Installed copies poll
+an appcast and self-update (no Developer ID — verification is by EdDSA signature;
+only the very first download needs the right-click → Open).
+
+```sh
+Scripts/release.sh 0.2.0      # build → zip → EdDSA-sign → gh release → appcast → push
+```
+
+That builds `dist/PRRadar.app` at the given version, zips it, signs the zip with
+the Sparkle EdDSA key (private key in the login keychain), publishes a GitHub
+release with the zip asset, then regenerates and pushes `appcast.xml` to `main`.
+The app's `SUFeedURL` points at the raw `appcast.xml`; `SUPublicEDKey` in the
+Info.plist verifies downloads. The icon is regenerated with `Scripts/make-icon.sh`
+when `AppIcon.swift` changes.
+
+Distribute by sending people the release zip (or the GitHub release link); after
+that, Sparkle handles updates.
 
 Requires `gh` installed and authenticated (`gh auth login`). The app discovers
 the binary in `/opt/homebrew/bin`, `/usr/local/bin`, etc. (GUI apps don't inherit
@@ -91,13 +112,13 @@ This path is behind the `PRRADAR_SHOT` env var and never runs in normal use.
 ## Not yet (v2)
 
 - **Notifications** — new-since-last-poll diff, silent baseline, re-entry.
-- **Distribution + auto-update** — ad-hoc signed + Sparkle (appcast) hosted on a
-  new GitHub repo; no Developer ID, so first launch needs right-click → Open.
 
-Done: the `.app` bundle (`LSUIElement` + `ATSApplicationFontsPath`, ad-hoc
-signed, PR-glyph icon) — see **Run** above; the `SMAppService` login item, which
-registers and sticks once launched from the bundle; in-panel **Settings** (gear)
-with a configurable refresh interval and **Quit**.
+Done: the `.app` bundle (`LSUIElement` + `ATSApplicationFontsPath` + embedded
+`Sparkle.framework`, ad-hoc signed, PR-glyph icon) — see **Run**; the
+`SMAppService` login item, which registers and sticks once launched from the
+bundle; in-panel **Settings** (gear) with a configurable refresh interval and
+**Quit**; and **Sparkle auto-update** with a one-command release flow — see
+**Releasing & auto-update**.
 
 Not doing: a right-click context menu on the menu-bar item — `MenuBarExtra(.window)`
 gives no right-click hook, and a full `NSStatusItem` refactor wasn't worth the

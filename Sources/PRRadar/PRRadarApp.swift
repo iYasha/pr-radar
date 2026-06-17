@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       return
     }
     registerLoginItem()
+    _ = AppUpdater.shared   // starts Sparkle when a feed is configured (packaged .app)
     Task { @MainActor in await AppStore.shared.appeared() }
   }
 

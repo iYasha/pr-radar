@@ -13,9 +13,14 @@ set -euo pipefail
 APP_NAME="PR Radar"          # display name (Finder)
 EXE_NAME="PRRadar"           # SPM executable / CFBundleExecutable
 BUNDLE_ID="com.simantiev.prradar"
-SHORT_VERSION="0.1.0"        # CFBundleShortVersionString (user-facing)
-BUILD_VERSION="1"            # CFBundleVersion (monotonic; bump per release)
+SHORT_VERSION="${SHORT_VERSION:-0.1.0}"   # CFBundleShortVersionString (env-overridable; release.sh sets it)
+BUILD_VERSION="${BUILD_VERSION:-1}"       # CFBundleVersion (monotonic; bump per release)
 MIN_MACOS="14.0"
+
+# Sparkle auto-update: appcast feed + EdDSA public key (private key lives in the
+# keychain; regenerate with Scripts/release.sh / generate_keys).
+SU_FEED_URL="https://raw.githubusercontent.com/iYasha/pr-radar/main/appcast.xml"
+SU_PUBLIC_ED_KEY="o5pi0q0j50wc++dJ9cMWH7U2MnAECaqB1W123DWqGaY="
 
 # --- locate repo root -------------------------------------------------------
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -39,6 +44,17 @@ rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources/Fonts"
 
 cp "$BIN" "$CONTENTS/MacOS/$EXE_NAME"
+
+# Embed Sparkle.framework (the executable links it as @rpath/Sparkle.framework/…)
+# and add a Frameworks rpath so it resolves inside the bundle on any machine.
+SPARKLE_SRC="$BIN_DIR/Sparkle.framework"
+if [ -d "$SPARKLE_SRC" ]; then
+  mkdir -p "$CONTENTS/Frameworks"
+  cp -R "$SPARKLE_SRC" "$CONTENTS/Frameworks/"
+  install_name_tool -add_rpath "@executable_path/../Frameworks" "$CONTENTS/MacOS/$EXE_NAME" 2>/dev/null || true
+else
+  echo "⚠ Sparkle.framework not found at $SPARKLE_SRC — auto-update will not load"
+fi
 
 # Fonts: copy out of the SPM resource bundle into Contents/Resources/Fonts so
 # ATSApplicationFontsPath can auto-register them (and the in-app loader finds them).
@@ -80,6 +96,10 @@ cat > "$CONTENTS/Info.plist" <<PLIST
     <key>LSUIElement</key>             <true/>
     <key>NSHighResolutionCapable</key> <true/>
     <key>ATSApplicationFontsPath</key> <string>Fonts</string>$ICON_KEY
+    <key>SUFeedURL</key>               <string>$SU_FEED_URL</string>
+    <key>SUPublicEDKey</key>           <string>$SU_PUBLIC_ED_KEY</string>
+    <key>SUEnableAutomaticChecks</key> <true/>
+    <key>SUScheduledCheckInterval</key> <integer>86400</integer>
 </dict>
 </plist>
 PLIST
@@ -87,9 +107,16 @@ PLIST
 printf 'APPL????' > "$CONTENTS/PkgInfo"
 
 # --- ad-hoc sign ------------------------------------------------------------
+# Sign inside-out: the embedded framework (and its nested XPC/helper bundles)
+# first, then the app (which signs the rpath-patched executable and seals the
+# framework). install_name_tool above invalidated the exe signature, so the app
+# sign must come last.
 echo "› codesign (ad-hoc)"
+if [ -d "$CONTENTS/Frameworks/Sparkle.framework" ]; then
+  codesign --force --sign - --timestamp=none --deep "$CONTENTS/Frameworks/Sparkle.framework"
+fi
 codesign --force --sign - --timestamp=none "$APP"
-codesign --verify --verbose "$APP" 2>&1 | sed 's/^/  /'
+codesign --verify --deep --verbose "$APP" 2>&1 | sed 's/^/  /'
 
 echo "✓ built $APP  ($SHORT_VERSION/$BUILD_VERSION)"
 echo "  run:  open \"$APP\""

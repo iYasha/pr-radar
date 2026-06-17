@@ -13,7 +13,12 @@ struct SettingsView: View {
         frequencyPicker
         caption.padding(.top, 8)
         Divider().overlay(theme.line).padding(.vertical, 18)
-        quitButton
+        HStack(spacing: 8) {
+          if AppUpdater.shared.isAvailable {
+            checkUpdatesButton
+          }
+          quitButton
+        }
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 14)
@@ -85,6 +90,20 @@ struct SettingsView: View {
       .font(.mono(10))
       .foregroundStyle(theme.fg3)
       .fixedSize(horizontal: false, vertical: true)
+  }
+
+  private var checkUpdatesButton: some View {
+    Button { AppUpdater.shared.checkForUpdates() } label: {
+      HStack(spacing: 6) {
+        Image(systemName: "arrow.down.circle").font(.system(size: 12, weight: .medium))
+        Text("Check for Updates").font(.mono(10))
+      }
+      .foregroundStyle(theme.fg2)
+      .padding(.horizontal, 11)
+      .padding(.vertical, 8)
+      .overlay(RoundedRectangle(cornerRadius: 6).stroke(theme.line2, lineWidth: 1))
+    }
+    .buttonStyle(.plain)
   }
 
   private var quitButton: some View {
