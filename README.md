@@ -44,18 +44,27 @@ menu-bar icon counts the PRs in the queries you choose.
 
 ## Install
 
-1. Download the latest `PRRadar.zip` from the
+1. Download the latest `PRRadar-*.zip` from the
    [Releases](https://github.com/iYasha/pr-radar/releases) page.
-2. Unzip and move `PR Radar.app` to `/Applications`.
-3. **First launch only:** right-click the app → **Open** (the build is ad-hoc
-   signed, not notarized, so Gatekeeper asks once). Equivalent from the terminal:
+2. Unzip and move `PRRadar.app` to `/Applications`. Finder shows it as
+   **PR Radar**, but the file on disk is `PRRadar.app`.
+3. **First launch only.** The build is ad-hoc signed, not notarized, so macOS
+   quarantines it. Clear the quarantine flag from the terminal:
 
    ```sh
-   xattr -dr com.apple.quarantine "/Applications/PR Radar.app"
+   xattr -dr com.apple.quarantine "/Applications/PRRadar.app"
    ```
 
+   Tip: type `xattr -dr com.apple.quarantine ` (trailing space), then drag the
+   app from Finder into Terminal to fill in the path — no typing the name.
+
+   No terminal? Double-click the app, let it get blocked, then open **System
+   Settings → Privacy & Security**, scroll to **Security**, and click **Open
+   Anyway**. On macOS 15 (Sequoia) and later the old right-click → **Open**
+   shortcut no longer bypasses Gatekeeper for non-notarized apps.
+
 After that, Sparkle keeps it up to date automatically — every later version is
-verified by EdDSA signature, so the right-click dance is a one-time thing.
+verified by EdDSA signature, so the Gatekeeper dance is a one-time thing.
 
 ## Usage
 
