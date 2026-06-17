@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>PR Radar</title>
+    <item>
+      <title>0.1.0</title>
+      <pubDate>Wed, 17 Jun 2026 12:28:34 +0000</pubDate>
+      <sparkle:version>0.1.0</sparkle:version>
+      <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/iYasha/pr-radar/releases/download/v0.1.0/PRRadar-0.1.0.zip"
+                 sparkle:edSignature="Y4dh3yEeb/TB5bMdrC5/fQqCQl41ZVtAh9mOhTmlS8VOhMCluBD3cwchHVvGwesEfy8h3mONOkQvugeHFLbDDg=="
+                 length="1950249"
+                 type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>
