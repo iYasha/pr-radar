@@ -1,125 +1,124 @@
 # PR Radar
 
-macOS menu-bar GitHub PR tracker. Saved queries as tabs; each tab = one GitHub
-GraphQL search. See `CONTEXT.md` for the domain language and `docs/adr/` for the
-locked decisions.
+A macOS menu-bar app that keeps the GitHub pull requests you care about one click
+away — the ones waiting on your review and the ones you opened. Every tab is a
+saved GitHub search; switching tabs re-filters the list live, and a badge on the
+menu-bar icon counts the PRs in the queries you choose.
 
-## Run
+<p align="center">
+  <img src="docs/screenshots/panel.png" width="380" alt="PR Radar panel — saved queries as tabs, live PR list">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/edit-query.png" width="380" alt="Editing a saved query — qualifier chips and live match count">
+</p>
 
-**Dev mode** (fast iteration):
+## Features
+
+- **Lives in the menu bar.** No dock icon, no window to manage. Click the
+  git-pull-request mark to open a compact panel.
+- **Saved queries as tabs.** Each tab is one GitHub search (e.g. *To review*,
+  *My PRs*). Build them from qualifier chips — `is:open`, `review-requested:@me`,
+  `draft:false`, `label:"ready for review"`, `repo:owner/name`, … — the same
+  syntax you type in GitHub's search box.
+- **Live match count.** The editor tells you how many open PRs a query matches as
+  you add and remove qualifiers.
+- **Menu-bar badge.** Opt any query into the badge; the icon shows the running
+  total so you know when something needs you without opening anything.
+- **At-a-glance rows.** Author avatar, repo, PR number, age, additions/deletions,
+  CI status, review decision, and labels — per row.
+- **Drag to reorder tabs**, light/dark aware, configurable refresh interval.
+- **Auto-updates** via [Sparkle](https://sparkle-project.org).
+
+## Requirements
+
+- macOS 14 (Sonoma) or later.
+- [GitHub CLI](https://cli.github.com) (`gh`) installed and authenticated —
+  PR Radar uses it as its data layer. Authenticate once with:
+
+  ```sh
+  gh auth login
+  ```
+
+  The app finds `gh` in the usual locations (`/opt/homebrew/bin`,
+  `/usr/local/bin`, …). If it's missing or logged out, the panel shows inline
+  guidance.
+
+## Install
+
+1. Download the latest `PRRadar.zip` from the
+   [Releases](https://github.com/iYasha/pr-radar/releases) page.
+2. Unzip and move `PR Radar.app` to `/Applications`.
+3. **First launch only:** right-click the app → **Open** (the build is ad-hoc
+   signed, not notarized, so Gatekeeper asks once). Equivalent from the terminal:
+
+   ```sh
+   xattr -dr com.apple.quarantine "/Applications/PR Radar.app"
+   ```
+
+After that, Sparkle keeps it up to date automatically — every later version is
+verified by EdDSA signature, so the right-click dance is a one-time thing.
+
+## Usage
+
+- Click the menu-bar icon to open the panel. It refreshes on launch, when the
+  panel opens, on a background timer, and via the header refresh button.
+- The two starter tabs — **To review** and **My PRs** — are ordinary saved
+  queries: rename, edit, reorder, or delete them like any other.
+- **`+`** adds a new tab. The sliders icon at the end of the query row opens the
+  editor for the active tab, where you compose qualifiers as chips and toggle
+  *Count in menu-bar badge*.
+- The **gear** opens Settings: refresh interval (1 / 5 / 15 / 30 min), *Check for
+  Updates*, and Quit.
+
+State (your queries, the active tab, the refresh interval) is stored in
+`~/Library/Application Support/PR Radar/state.json`.
+
+## Build from source
+
+Dev mode, for fast iteration:
 
 ```sh
 swift build
-swift run PRRadar      # or: .build/debug/PRRadar
+swift run PRRadar          # or: .build/debug/PRRadar
 ```
 
-**App bundle** (double-clickable, shareable):
+A double-clickable, shareable `.app` bundle:
 
 ```sh
-Scripts/build-app.sh   # → dist/PRRadar.app (release, ad-hoc signed)
+Scripts/build-app.sh       # → dist/PRRadar.app (release, ad-hoc signed)
 open dist/PRRadar.app
 ```
 
-The bundle is dockless (`LSUIElement`), bundles the fonts
+The bundle is dockless (`LSUIElement`), embeds the fonts
 (`ATSApplicationFontsPath`) and `Sparkle.framework`, carries the PR-glyph icon,
-and is ad-hoc signed — so it runs on another Mac, but the first launch there
-needs a right-click → Open (or `xattr -dr com.apple.quarantine PRRadar.app`)
-until it carries a Developer ID. See `Scripts/build-app.sh` for config (bundle
-id, version, min macOS, Sparkle feed/key).
-
-Either way it launches as an accessory app (no dock icon) and installs a
-menu-bar item (git-pull-request mark). Click it to open the 400×560 panel.
-**Settings** (header gear) holds the refresh-interval picker, Check for Updates,
-and Quit.
+and is ad-hoc signed. See `Scripts/build-app.sh` for the configurable bits
+(bundle id, version, minimum macOS, Sparkle feed and key).
 
 ## Releasing & auto-update
 
-Updates ship via [Sparkle](https://sparkle-project.org). Installed copies poll
-an appcast and self-update (no Developer ID — verification is by EdDSA signature;
-only the very first download needs the right-click → Open).
+Installed copies poll an [appcast](appcast.xml) and self-update — no Developer ID
+needed, because downloads are verified by EdDSA signature.
 
 ```sh
-Scripts/release.sh 0.2.0      # build → zip → EdDSA-sign → gh release → appcast → push
+Scripts/release.sh 0.2.0   # build → zip → EdDSA-sign → gh release → appcast → push
 ```
 
-That builds `dist/PRRadar.app` at the given version, zips it, signs the zip with
-the Sparkle EdDSA key (private key in the login keychain), publishes a GitHub
-release with the zip asset, then regenerates and pushes `appcast.xml` to `main`.
-The app's `SUFeedURL` points at the raw `appcast.xml`; `SUPublicEDKey` in the
-Info.plist verifies downloads. The icon is regenerated with `Scripts/make-icon.sh`
-when `AppIcon.swift` changes.
+That builds `dist/PRRadar.app` at the given version, zips and signs it with the
+Sparkle EdDSA key (private key in the login keychain), publishes a GitHub release
+with the zip asset, then regenerates and pushes `appcast.xml`. The app's
+`SUFeedURL` points at the raw `appcast.xml`; `SUPublicEDKey` in the Info.plist
+verifies downloads. Requires `gh` installed and authenticated.
 
-Distribute by sending people the release zip (or the GitHub release link); after
-that, Sparkle handles updates.
-
-Requires `gh` installed and authenticated (`gh auth login`). The app discovers
-the binary in `/opt/homebrew/bin`, `/usr/local/bin`, etc. (GUI apps don't inherit
-the shell `PATH`). If `gh` is missing or logged out, the panel shows inline guidance.
-
-## Data layer
+## How it works
 
 Each tab shells out to `gh api graphql` (`search(type: ISSUE)`), passing the
-composed query as an opaque `-f q=` variable — never a positional arg (ADR-0001).
-`is:pr` is injected into every query. One search call per tab (ADR-0003). The
-query model is `{ id, name, tokens: [String], countInBadge }`; the search string
-is `tokens.joined(" ")` (ADR-0002).
+composed query as an opaque `-f q=` variable — one search call per tab. `is:pr`
+is injected into every query. A saved query is just
+`{ id, name, tokens: [String], countInBadge }`, and the search string is the
+tokens joined by spaces.
 
-State (queries, active tab, theme) persists to
-`~/Library/Application Support/PR Radar/state.json`.
+For the domain language and the locked-in design decisions, see
+[`CONTEXT.md`](CONTEXT.md) and [`docs/adr/`](docs/adr).
 
-## Layout
+## License
 
-```
-Sources/PRRadar/
-  PRRadarApp.swift      @main App, MenuBarExtra(.window), AppDelegate
-                        (accessory policy, font registration, login item)
-  Model/
-    SavedQuery.swift    { id, name, tokens, countInBadge }; 2 defaults
-    PullRequest.swift   row model + status/CI/diff/age derivations
-    GitHubClient.swift  gh discovery + Process exec + GraphQL decode
-    AppStore.swift      @Observable @MainActor: queries, results cache, refresh
-    Persistence.swift   Codable JSON in Application Support
-  Design/
-    Theme.swift         color tokens (dark/light) + fonts + palette hash
-    FeatherIcon.swift    Feather icons hand-drawn as SwiftUI Shapes
-    PRMark.swift        git-pull-request NSImage template (menu-bar icon)
-    Snapshot.swift      offscreen-render scroll bypass (see below)
-    AppIcon.swift       app-bundle icon (PR glyph squircle); rendered via PRRADAR_ICON
-  Views/
-    PanelView, HeaderView, TabBarView, PRRowView,
-    QueryEditorView, SettingsView, AvatarView, FlowLayout
-  Resources/Fonts/      Hanken Grotesk, Fragment Mono, Instrument Serif (bundled)
-```
-
-Refresh: at launch + when the panel opens + a background timer + the header
-refresh button. The timer interval is user-configurable (1/5/15/30 min, default
-5) in **Settings** (header gear) and persists in `state.json`. Menu-bar badge =
-sum of `issueCount` over queries with `countInBadge` on. Settings also holds the
-**Quit** button.
-
-## Verifying the UI without the menu bar
-
-`ImageRenderer` can't open the popover, and it renders `ScrollView` content
-empty, so a gated harness swaps scroll views for plain stacks and loads sample
-data:
-
-```sh
-PRRADAR_SHOT=1 .build/debug/PRRadar      # writes /tmp/panel_{list,light,editor}.png then exits
-```
-
-This path is behind the `PRRADAR_SHOT` env var and never runs in normal use.
-
-## Not yet (v2)
-
-- **Notifications** — new-since-last-poll diff, silent baseline, re-entry.
-
-Done: the `.app` bundle (`LSUIElement` + `ATSApplicationFontsPath` + embedded
-`Sparkle.framework`, ad-hoc signed, PR-glyph icon) — see **Run**; the
-`SMAppService` login item, which registers and sticks once launched from the
-bundle; in-panel **Settings** (gear) with a configurable refresh interval and
-**Quit**; and **Sparkle auto-update** with a one-command release flow — see
-**Releasing & auto-update**.
-
-Not doing: a right-click context menu on the menu-bar item — `MenuBarExtra(.window)`
-gives no right-click hook, and a full `NSStatusItem` refactor wasn't worth the
-churn. Quit/Settings live in the panel (gear button).
+[MIT](LICENSE) © 2026 iYasha
