@@ -41,13 +41,6 @@ struct SettingsView: View {
       .buttonStyle(.plain)
       Text("Settings").font(.sans(13, .semibold)).foregroundStyle(theme.fg)
       Spacer()
-      Button { store.closeSettingsButtonTapped() } label: {
-        Icon(kind: .x, size: 15)
-          .foregroundStyle(theme.fg2)
-          .frame(width: 27, height: 27)
-          .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
     }
     .padding(.horizontal, 13)
     .padding(.vertical, 11)
